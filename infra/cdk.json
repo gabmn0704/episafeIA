@@ -3,6 +3,7 @@
   "watch": { "include": ["**"], "exclude": ["node_modules", "cdk.out", "test"] },
   "context": {
     "stage": "dev",
-    "@aws-cdk/core:newStyleStackSynthesis": true
+    "@aws-cdk/core:newStyleStackSynthesis": true,
+    "@aws-cdk/core:defaultCrossStackReferences": "strong"
   }
 }
