@@ -1,0 +1,23 @@
+{
+  "name": "episafe-infra",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AWS CDK (TypeScript) para EpiSafe IA: VPC, RDS, ECR, App Runner, Secrets Manager, CloudWatch",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "synth": "cdk synth --quiet",
+    "synth:dev": "cdk synth --quiet -c stage=dev",
+    "synth:prod": "cdk synth --quiet -c stage=prod",
+    "test": "vitest run",
+    "diff": "cdk diff"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "aws-cdk": "^2.1000.0",
+    "aws-cdk-lib": "^2.200.0",
+    "constructs": "^10.4.2",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.6.3",
+    "vitest": "^2.1.8"
+  }
+}
