@@ -3,6 +3,7 @@ import { App } from 'aws-cdk-lib';
 import { resolveStage } from '../lib/config';
 import { DatabaseStack } from '../lib/database-stack';
 import { NetworkStack } from '../lib/network-stack';
+import { ObservabilityStack } from '../lib/observability-stack';
 import { RegistryStack } from '../lib/registry-stack';
 import { SecretsStack } from '../lib/secrets-stack';
 import { ServicesStack } from '../lib/services-stack';
@@ -25,7 +26,7 @@ const database = new DatabaseStack(app, `${prefix}-database`, {
 });
 const registry = new RegistryStack(app, `${prefix}-registry`, { env, config });
 
-new ServicesStack(app, `${prefix}-services`, {
+const services = new ServicesStack(app, `${prefix}-services`, {
   env,
   config,
   vpc: network.vpc,
@@ -36,4 +37,12 @@ new ServicesStack(app, `${prefix}-services`, {
   jwtSecret: secrets.jwtSecret,
   anthropicApiKey: secrets.anthropicApiKey,
   imageTag: String(app.node.tryGetContext('imageTag') ?? 'latest'),
+});
+
+new ObservabilityStack(app, `${prefix}-observability`, {
+  env,
+  config,
+  database: database.instance,
+  backService: services.backService,
+  iaService: services.iaService,
 });
