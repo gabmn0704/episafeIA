@@ -36,4 +36,4 @@ Reproducible, revisable en PR, con parametros dev/prod. **App Runner** en vez de
 Sin app nativa ni SDK propietario, funciona en Chrome/Edge/Android con perfiles GATT estandar (Heart Rate 0x180D). Limitaciones y alternativas en [reloj-inteligente.md](reloj-inteligente.md).
 
 ## 12. Un solo contrato compartido
-Esquema y endpoints se acordaron antes de codificar (contrato versionado en los README), de modo que los cinco repos evolucionaran en paralelo sin romperse.
+Esquema y endpoints se acordaron antes de codificar (contrato versionado en los README), de modo que los cinco repos evolucionen en paralelo sin romperse.
