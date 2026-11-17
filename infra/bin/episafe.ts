@@ -5,6 +5,7 @@ import { DatabaseStack } from '../lib/database-stack';
 import { NetworkStack } from '../lib/network-stack';
 import { RegistryStack } from '../lib/registry-stack';
 import { SecretsStack } from '../lib/secrets-stack';
+import { ServicesStack } from '../lib/services-stack';
 
 const app = new App();
 const config = resolveStage(app.node.tryGetContext('stage'));
@@ -15,11 +16,24 @@ const env = {
 const prefix = `episafe-${config.stage}`;
 
 const network = new NetworkStack(app, `${prefix}-network`, { env, config });
-new SecretsStack(app, `${prefix}-secrets`, { env, config });
-new DatabaseStack(app, `${prefix}-database`, {
+const secrets = new SecretsStack(app, `${prefix}-secrets`, { env, config });
+const database = new DatabaseStack(app, `${prefix}-database`, {
   env,
   config,
   vpc: network.vpc,
   dbSecurityGroup: network.dbSecurityGroup,
 });
-new RegistryStack(app, `${prefix}-registry`, { env, config });
+const registry = new RegistryStack(app, `${prefix}-registry`, { env, config });
+
+new ServicesStack(app, `${prefix}-services`, {
+  env,
+  config,
+  vpc: network.vpc,
+  appSecurityGroup: network.appSecurityGroup,
+  backRepo: registry.backRepo,
+  iaRepo: registry.iaRepo,
+  databaseUrl: database.databaseUrl,
+  jwtSecret: secrets.jwtSecret,
+  anthropicApiKey: secrets.anthropicApiKey,
+  imageTag: String(app.node.tryGetContext('imageTag') ?? 'latest'),
+});
