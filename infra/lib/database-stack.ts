@@ -43,7 +43,7 @@ export class DatabaseStack extends Stack {
       credentials: rds.Credentials.fromGeneratedSecret('episafe', {
         secretName: `episafe/${config.stage}/db`,
         // Sin caracteres reservados de URL: la contraseña se inserta en DATABASE_URL.
-        excludeCharacters: ' %+~`#$&*()|[]{}:;<>?!'/@"\=',
+        excludeCharacters: ' %+~`#$&*()|[]{}:;<>?!\'/@"\\=',
       }),
       allocatedStorage: config.db.allocatedStorageGb,
       maxAllocatedStorage: config.db.maxAllocatedStorageGb,
