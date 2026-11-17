@@ -1,0 +1,43 @@
+name: infra-ci
+
+on:
+  pull_request:
+    paths: ["infra/**", ".github/workflows/infra-ci.yml"]
+  push:
+    branches: [main]
+    paths: ["infra/**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: infra-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    strategy:
+      matrix:
+        stage: [dev, prod]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+      - run: npm ci
+      - name: Typecheck
+        run: npm run build
+      - name: Unit tests
+        run: npm test
+      - name: Synthesize (${{ matrix.stage }})
+        run: npx cdk synth --quiet -c stage=${{ matrix.stage }}
+        env:
+          # Cuenta ficticia: synth no requiere credenciales reales
+          CDK_DEFAULT_ACCOUNT: "111111111111"
+          CDK_DEFAULT_REGION: us-east-1
