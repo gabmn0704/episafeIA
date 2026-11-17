@@ -3,6 +3,7 @@ import { App } from 'aws-cdk-lib';
 import { resolveStage } from '../lib/config';
 import { DatabaseStack } from '../lib/database-stack';
 import { NetworkStack } from '../lib/network-stack';
+import { RegistryStack } from '../lib/registry-stack';
 import { SecretsStack } from '../lib/secrets-stack';
 
 const app = new App();
@@ -21,3 +22,4 @@ new DatabaseStack(app, `${prefix}-database`, {
   vpc: network.vpc,
   dbSecurityGroup: network.dbSecurityGroup,
 });
+new RegistryStack(app, `${prefix}-registry`, { env, config });

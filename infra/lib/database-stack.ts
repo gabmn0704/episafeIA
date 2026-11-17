@@ -1,4 +1,4 @@
-import { Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
+import { Duration, Fn, RemovalPolicy, SecretValue, Stack, StackProps } from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import * as rds from 'aws-cdk-lib/aws-rds';
@@ -16,6 +16,8 @@ export interface DatabaseStackProps extends StackProps {
 export class DatabaseStack extends Stack {
   public readonly instance: rds.DatabaseInstance;
   public readonly credentials: secretsmanager.ISecret;
+  /** postgres://user:pass@host:5432/db?sslmode=require, listo para DATABASE_URL. */
+  public readonly databaseUrl: secretsmanager.Secret;
 
   constructor(scope: Construct, id: string, props: DatabaseStackProps) {
     super(scope, id, props);
@@ -40,6 +42,8 @@ export class DatabaseStack extends Stack {
       databaseName: 'episafe',
       credentials: rds.Credentials.fromGeneratedSecret('episafe', {
         secretName: `episafe/${config.stage}/db`,
+        // Sin caracteres reservados de URL: la contraseña se inserta en DATABASE_URL.
+        excludeCharacters: ' %+~`#$&*()|[]{}:;<>?!'/@"\=',
       }),
       allocatedStorage: config.db.allocatedStorageGb,
       maxAllocatedStorage: config.db.maxAllocatedStorageGb,
@@ -69,5 +73,27 @@ export class DatabaseStack extends Stack {
     });
 
     this.credentials = this.instance.secret!;
+
+    this.databaseUrl = new secretsmanager.Secret(this, 'DatabaseUrl', {
+      secretName: `episafe/${config.stage}/database-url`,
+      description: 'DATABASE_URL completa para el back (derivada del secreto de RDS)',
+      secretStringValue: cdkSecretValue(
+        Fn.join('', [
+          'postgres://episafe:',
+          this.credentials.secretValueFromJson('password').unsafeUnwrap(),
+          '@',
+          this.instance.dbInstanceEndpointAddress,
+          ':',
+          this.instance.dbInstanceEndpointPort,
+          '/episafe?sslmode=require',
+        ]),
+      ),
+      removalPolicy: isProd ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
+    });
   }
+}
+
+/** Envuelve un valor resuelto por CloudFormation (referencia dinámica) como SecretValue. */
+function cdkSecretValue(value: string): SecretValue {
+  return SecretValue.unsafePlainText(value);
 }
