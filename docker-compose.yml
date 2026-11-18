@@ -1,0 +1,109 @@
+# EpiSafe IA - entorno local completo (postgres + migraciones + back + IA + front).
+# Requiere los 5 repos clonados como hermanos:
+#   episafe/
+#     episafeIA/        <- este repo (docker-compose.yml)
+#     EpisafeIa_BD/     <- migraciones + seed
+#     EpisafeIa_back/   <- API
+#     episafeIA_IA/     <- servicio IA
+#     EpisafeIA_front/  <- web (Vite)
+#
+# Uso:  cp .env.example .env && docker compose up --build
+# Solo credenciales de DESARROLLO. Nunca reutilizar en produccion.
+
+name: episafe
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: episafe
+      POSTGRES_USER: episafe
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-episafe_dev}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U episafe -d episafe"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Job de una sola ejecucion: aplica migraciones y, si SEED=true, el seed demo.
+  migrate:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ../EpisafeIa_BD:/app
+    environment:
+      DATABASE_URL: postgres://episafe:${POSTGRES_PASSWORD:-episafe_dev}@postgres:5432/episafe
+      DATABASE_SSL: "false"
+      SEED: ${SEED:-true}
+    command: >
+      sh -c "npm ci --no-audit --no-fund &&
+             npm run migrate &&
+             if [ \"$$SEED\" = \"true\" ]; then npm run seed; fi"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  ia:
+    build:
+      context: ../episafeIA_IA
+    environment:
+      NODE_ENV: development
+      PORT: "5000"
+      # Opcional: sin key, /explain usa plantillas.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  back:
+    build:
+      context: ../EpisafeIa_back
+    environment:
+      NODE_ENV: development
+      PORT: "4000"
+      DATABASE_URL: postgres://episafe:${POSTGRES_PASSWORD:-episafe_dev}@postgres:5432/episafe
+      DATABASE_SSL: "false"
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-dev-only-change-me}
+      AI_SERVICE_URL: http://ia:5000
+      CORS_ORIGIN: http://localhost:5173
+    ports:
+      - "4000:4000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      ia:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/api/v1/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # El front corre con el dev server de Vite (HMR) montando el repo hermano.
+  front:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ../EpisafeIA_front:/app
+      - front_node_modules:/app/node_modules
+    environment:
+      # El navegador llama al back publicado en el host, no al nombre interno.
+      VITE_API_URL: http://localhost:4000/api/v1
+    command: sh -c "npm ci --no-audit --no-fund && npm run dev -- --host 0.0.0.0 --port 5173"
+    ports:
+      - "5173:5173"
+    depends_on:
+      - back
+
+volumes:
+  pgdata:
+  front_node_modules:

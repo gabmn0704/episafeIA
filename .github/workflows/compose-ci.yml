@@ -1,0 +1,16 @@
+name: compose-ci
+
+on:
+  pull_request:
+    paths: ["docker-compose.yml", ".env.example", ".github/workflows/compose-ci.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  lint-compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate compose file
+        run: cp .env.example .env && docker compose config --quiet
